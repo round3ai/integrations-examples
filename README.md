@@ -10,7 +10,7 @@ Each example is self-contained. Clone the repo, pick the example closest to your
 
 ### Anthropic SDK (Go) + Amazon Bedrock
 
-**[`anthropic-sdk/middleware-example`](./anthropic-sdk/middleware-example)**
+**[`anthropic-sdk/go/middleware-example`](./anthropic-sdk/go/middleware-example)**
 
 Adds Three.dev observability to the official [Anthropic Go SDK](https://github.com/anthropics/anthropic-sdk-go) when routing through **Amazon Bedrock**. A single middleware line captures every request and response and reports it to Three.dev asynchronously — zero added latency, no proxy, no changes to your business logic.
 
@@ -50,7 +50,8 @@ Every example has its own README with step-by-step instructions. The general flo
 ```
 integrations-examples/
 └── anthropic-sdk/
-    └── middleware-example/     # Anthropic Go SDK + Amazon Bedrock
+    └── go/
+        └── middleware-example/     # Anthropic Go SDK + Amazon Bedrock
 ```
 
 More examples are on the way. Check back soon or open an issue to request a specific language, SDK, or provider.
