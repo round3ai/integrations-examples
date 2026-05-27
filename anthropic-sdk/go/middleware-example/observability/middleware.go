@@ -4,15 +4,66 @@ package observability
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/google/uuid"
 )
+
+var wg sync.WaitGroup
+
+// Flush blocks until all in-flight reports have completed.
+//
+// Call this before your process exits to avoid losing the last in-flight reports:
+//
+//   - CLI / short-lived program: defer observability.Flush() early in main()
+//   - HTTP server graceful shutdown: call observability.Flush() in your shutdown
+//     handler after the server stops accepting new requests
+//
+// Skipping Flush is safe in the sense that it will not crash your application,
+// but any reports still in flight when the process exits will be lost.
+func Flush() {
+	wg.Wait()
+}
+
+type contextKey struct{}
+
+// WithSessionID attaches a session ID to the context. Pass the returned
+// context to client.Messages.New — the middleware reads it and includes
+// the session ID in every reported request for that call.
+//
+// The session ID groups related requests into a single conversation on
+// the Three.dev dashboard. It can be any string that identifies a session
+// in your system — a user ID, conversation ID, HTTP request ID, or anything
+// else stable across the turns of a conversation. The middleware treats it
+// as an opaque string and imposes no format constraints.
+//
+// If you don't have a natural session identifier, generate a UUID:
+//
+//	sessionID := uuid.New().String()
+//
+// Examples:
+//
+//	ctx = observability.WithSessionID(ctx, userID)           // tie to a user
+//	ctx = observability.WithSessionID(ctx, conversationID)   // from your own DB
+//	ctx = observability.WithSessionID(ctx, requestID)        // from an HTTP header
+//	ctx = observability.WithSessionID(ctx, uuid.New().String()) // generate one
+//
+//	client.Messages.New(ctx, ...)
+func WithSessionID(ctx context.Context, sessionID string) context.Context {
+	return context.WithValue(ctx, contextKey{}, sessionID)
+}
+
+func sessionIDFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(contextKey{}).(string)
+	return v
+}
 
 // Config holds configuration for the observability middleware.
 type Config struct {
@@ -51,6 +102,7 @@ func NewMiddleware(cfg Config) option.Middleware {
 
 		c := captured{
 			requestID:      uuid.Must(uuid.NewV7()).String(),
+			sessionID:      sessionIDFromContext(r.Context()),
 			startTime:      time.Now(),
 			path:           r.URL.Path,
 			reqBody:        reqBody,
@@ -67,7 +119,11 @@ func NewMiddleware(cfg Config) option.Middleware {
 			c.resContentType = res.Header.Get("Content-Type")
 		}
 
-		go safeReport(cfg, c)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			safeReport(cfg, c)
+		}()
 		return res, callErr
 	}
 }
@@ -86,6 +142,7 @@ func drainBody(rc io.ReadCloser) ([]byte, io.ReadCloser) {
 // captured holds all data extracted from a single request/response cycle.
 type captured struct {
 	requestID      string
+	sessionID      string
 	startTime      time.Time
 	endTime        time.Time
 	path           string
@@ -131,11 +188,12 @@ func reportToAPI(cfg Config, c captured) {
 // provider "amazon_bedrock_runtime" + path "/model/{model}/invoke" is the
 // combination that routes to api3's MessagesHandler for structured parsing.
 type recordRequest struct {
-	ID          string        `json:"id"`
-	UseCaseSlug string        `json:"use_case_slug"`
-	Provider    string        `json:"provider"`
-	Input       recordInput   `json:"input"`
-	Output      recordOutput  `json:"output"`
+	ID          string       `json:"id"`
+	SessionID   string       `json:"session_id,omitempty"`
+	UseCaseSlug string       `json:"use_case_slug"`
+	Provider    string       `json:"provider"`
+	Input       recordInput  `json:"input"`
+	Output      recordOutput `json:"output"`
 }
 
 type recordInput struct {
@@ -155,6 +213,7 @@ type recordOutput struct {
 func buildPayload(cfg Config, c captured) []byte {
 	payload := recordRequest{
 		ID:          c.requestID,
+		SessionID:   c.sessionID,
 		UseCaseSlug: cfg.UseCaseSlug,
 		Provider:    "amazon_bedrock_runtime",
 		Input: recordInput{

@@ -70,7 +70,7 @@ The middleware function receives `(*http.Request, option.MiddlewareNext)` and re
    - Record end time and any error
    - If no error: drain the response body (same read-and-replace pattern), capture status code and response `Content-Type`
 
-4. **Report asynchronously:** `go safeReport(cfg, capturedData)`
+4. **Report asynchronously:** increment the package-level `sync.WaitGroup`, then launch `go func() { defer wg.Done(); safeReport(cfg, capturedData) }()`
 
 5. **Return the original `(res, err)` unmodified.** The middleware is transparent.
 
@@ -81,6 +81,7 @@ Extract a `drainBody(rc io.ReadCloser) ([]byte, io.ReadCloser)` helper to avoid 
 A private struct holding all data from one request/response cycle:
 
 - `requestID` (string) — UUIDv7
+- `sessionID` (string) — optional, read from context via `WithSessionID`
 - `startTime`, `endTime` (time.Time)
 - `path` (string) — the URL path
 - `statusCode` (int)
@@ -131,7 +132,47 @@ Define typed Go structs for the JSON payload instead of using `map[string]any`. 
 | `content_chunks_received_at` | []string | Always empty `[]` (reserved for streaming) |
 | `content_type` | string | Response Content-Type header. Omit if empty. |
 
+Add `session_id` (string, `omitempty`) to `recordRequest` — omitted when blank so calls without a session ID are unaffected.
+
 Use `encoding/base64` (StdEncoding) for body encoding.
+
+### 2.7 Package-level Flush
+
+Declare a package-level `var wg sync.WaitGroup`. Expose one exported function:
+
+```go
+func Flush() { wg.Wait() }
+```
+
+This allows callers to block until all in-flight reporting goroutines complete, which is required before process exit. Document two usage patterns:
+
+- **CLI / short-lived program**: `defer observability.Flush()` early in `main()`
+- **HTTP server graceful shutdown**: call `observability.Flush()` in the shutdown handler after `server.Shutdown()`, before the process exits
+
+Skipping `Flush` will not crash the application, but any reports still in flight when the process exits will be lost.
+
+### 2.8 Per-call session ID
+
+Define a public `WithSessionID(ctx context.Context, sessionID string) context.Context` function that stores the session ID in the context using an unexported package-level key type (to avoid collisions with other packages).
+
+```go
+type contextKey struct{}
+
+func WithSessionID(ctx context.Context, sessionID string) context.Context {
+    return context.WithValue(ctx, contextKey{}, sessionID)
+}
+```
+
+The middleware reads it from `r.Context()` before the call and stores it in the `captured` struct.
+
+The session ID is **any string** that identifies a conversation or session in the customer's system. The middleware treats it as opaque and imposes no format constraints. Customers should use whatever natural identifier they already have:
+
+- A user ID — to group all requests from one user
+- A conversation ID — from their own database
+- An HTTP request/trace ID — propagated from an upstream service
+- A generated UUID — when no natural identifier exists
+
+The caller sets it once per conversation and passes the enriched context to each `client.Messages.New(ctx, ...)` call in that session. When no session ID is set, the field is omitted from the payload.
 
 ## Step 3: Integrate into existing code
 
@@ -151,16 +192,34 @@ client := anthropic.NewClient(
 After:
 
 ```go
+apiKey      := os.Getenv("THREE_API_KEY")
+useCaseSlug := os.Getenv("USE_CASE_SLUG")
+endpoint    := os.Getenv("THREE_ENDPOINT")
+
 client := anthropic.NewClient(
     bedrock.WithLoadDefaultConfig(ctx),
     option.WithMiddleware(observability.NewMiddleware(observability.Config{
-        APIKey:      os.Getenv("THREE_API_KEY"),
-        UseCaseSlug: "my-use-case",
+        APIKey:      apiKey,
+        UseCaseSlug: useCaseSlug,
+        Endpoint:    endpoint,
     })),
 )
 ```
 
-No other code changes are needed. All `client.Messages.New(...)` calls continue to work exactly as before.
+Add `defer observability.Flush()` early in the function that initialises the client. In a CLI this belongs at the top of `main()`. In an HTTP server it belongs in the graceful shutdown handler, called after `server.Shutdown()`.
+
+No other changes are needed to the client setup. To enable session tracking, attach a session ID to the context before each call:
+
+```go
+// Use any stable identifier from your system:
+ctx = observability.WithSessionID(ctx, userID)           // user ID
+ctx = observability.WithSessionID(ctx, conversationID)   // conversation ID
+ctx = observability.WithSessionID(ctx, uuid.New().String()) // generate if none exists
+
+message, err := client.Messages.New(ctx, ...)
+```
+
+Session tracking is optional — calls without a session ID are reported normally, just without session grouping.
 
 ## Step 4: Environment configuration
 
@@ -169,6 +228,7 @@ Two required environment variables, two optional:
 | Variable | Required | Description |
 |---|---|---|
 | `THREE_API_KEY` | Yes | Three.dev API key (`r3_sk_...`) |
+| `USE_CASE_SLUG` | Yes | Three.dev use case identifier (from the dashboard) |
 | `THREE_ENDPOINT` | No | Override the Three.dev API base URL (default: `https://api.three.dev`) |
 | `AWS_BEARER_TOKEN_BEDROCK` | Yes | Bedrock API key for bearer token auth |
 | `AWS_REGION` | Yes | AWS region for the Bedrock Runtime endpoint |
