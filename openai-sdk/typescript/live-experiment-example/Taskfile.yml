@@ -1,0 +1,31 @@
+version: '3'
+
+dotenv: ['.env']
+
+tasks:
+  setup:
+    desc: Install Node dependencies
+    sources:
+      - package.json
+      - package-lock.json
+    cmds:
+      - npm install
+
+  env:
+    desc: Copy .env.example to .env if .env doesn't exist
+    status:
+      - test -f .env
+    cmds:
+      - cp .env.example .env
+      - echo "Created .env from .env.example — edit it and set your THREE_API_KEY"
+
+  run:
+    desc: Run the Live Experiment conversation example
+    deps: [setup, env]
+    cmds:
+      - npm start
+
+  default:
+    desc: Setup everything and run
+    cmds:
+      - task: run
