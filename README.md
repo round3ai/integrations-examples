@@ -33,6 +33,36 @@ client := anthropic.NewClient(
 
 ---
 
+### OpenAI SDK (TypeScript) + Live Experiments
+
+**[`openai-sdk/typescript/live-experiment-example`](./openai-sdk/typescript/live-experiment-example)**
+
+Runs a Three.dev **Live Experiment** across a multi-turn, tool-using conversation with the official [OpenAI JS SDK](https://github.com/openai/openai-node). The OpenAI client is pointed at the Three.dev gateway; before each request the app calls `/assign` to pick the active variant, tags requests at the session and request level, and reports a quality metric at the end — the full assign → run → measure loop.
+
+| | |
+|---|---|
+| **Language** | TypeScript (Node.js 18+) |
+| **LLM Provider** | OpenAI (via the Three.dev gateway) |
+| **Integration style** | Gateway proxy + `/assign` |
+| **What you need** | Three.dev API key · use case with OpenAI configured |
+
+```ts
+const client = new OpenAI({
+  apiKey: process.env.THREE_API_KEY,        // r3_sk_... — gateway holds the OpenAI key
+  baseURL: "https://gate.three.dev/v1",
+  defaultHeaders: { "X-Three-Use-Case": useCaseSlug, "X-Three-AI-Provider": "openai" },
+});
+
+const assignment = await assign(cfg);       // pick the variant for this request
+const variant = paramsFromAssignment(assignment, defaultModel); // { body, headers }
+await client.chat.completions.create(
+  { ...variant.body, messages, tools },     // model + chat params
+  { headers: variant.headers },             // routing (e.g. provider)
+);
+```
+
+---
+
 ## Getting started
 
 Every example has its own README with step-by-step instructions. The general flow is:
@@ -49,9 +79,12 @@ Every example has its own README with step-by-step instructions. The general flo
 
 ```
 integrations-examples/
-└── anthropic-sdk/
-    └── go/
-        └── middleware-example/     # Anthropic Go SDK + Amazon Bedrock
+├── anthropic-sdk/
+│   └── go/
+│       └── middleware-example/         # Anthropic Go SDK + Amazon Bedrock (observability)
+└── openai-sdk/
+    └── typescript/
+        └── live-experiment-example/    # OpenAI JS SDK + Three.dev Live Experiments
 ```
 
 More examples are on the way. Check back soon or open an issue to request a specific language, SDK, or provider.
