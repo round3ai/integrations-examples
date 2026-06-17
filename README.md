@@ -37,7 +37,7 @@ client := anthropic.NewClient(
 
 **[`anthropic-sdk/ruby/manual-reporting-example`](./anthropic-sdk/ruby/manual-reporting-example)**
 
-Adds Three.dev observability to the official [Anthropic Ruby SDK](https://github.com/anthropics/anthropic-sdk-ruby) without a proxy and without patching the SDK. The Ruby SDK has no middleware hook, so you call it normally and hand each request/response to `Three.record(...)`, which reports to Three.dev asynchronously — off your inference critical path.
+Adds Three.dev observability to the official [Anthropic Ruby SDK](https://github.com/anthropics/anthropic-sdk-ruby) without a proxy and without patching the SDK. The Ruby SDK has no middleware hook, so you call it normally and hand each request/response to `Three.record_request(...)`, which reports to Three.dev asynchronously — off your inference critical path.
 
 | | |
 |---|---|
