@@ -1,0 +1,56 @@
+version: '3'
+
+dotenv: ['.env']
+
+tasks:
+  check-ruby:
+    desc: Ensure Ruby >= 3.3 (official SDK needs >= 3.2; this example needs 3.3+ for uuid_v7)
+    silent: true
+    cmds:
+      - |
+        ruby - <<'RUBY'
+        require "rubygems"
+        if Gem::Version.new(RUBY_VERSION) < Gem::Version.new("3.3.0")
+          warn ""
+          warn "[three] This example needs Ruby >= 3.3 (you have #{RUBY_VERSION})."
+          warn "  The official Anthropic SDK requires Ruby >= 3.2, and this example"
+          warn "  uses SecureRandom.uuid_v7, which needs Ruby >= 3.3."
+          warn ""
+          warn "  Install one, e.g. with rbenv:"
+          warn "    brew install rbenv ruby-build"
+          warn "    rbenv install 3.3.6 && rbenv local 3.3.6"
+          warn "  Then re-run: task run"
+          warn ""
+          exit 1
+        end
+        RUBY
+
+  env:
+    desc: Copy .env.example to .env if .env doesn't exist
+    status:
+      - test -f .env
+    cmds:
+      - cp .env.example .env
+      - echo "Created .env from .env.example — edit it and set your THREE_API_KEY"
+
+  setup:
+    desc: Install Ruby dependencies
+    sources:
+      - Gemfile
+      - Gemfile.lock
+    cmds:
+      - task: check-ruby
+      - bundle install
+
+  run:
+    desc: Check Ruby, install deps, and run the Anthropic manual-reporting example
+    cmds:
+      - task: check-ruby
+      - task: env
+      - task: setup
+      - bundle exec ruby main.rb
+
+  default:
+    desc: Setup everything and run
+    cmds:
+      - task: run

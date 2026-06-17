@@ -1,0 +1,6 @@
+.env
+.task
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
