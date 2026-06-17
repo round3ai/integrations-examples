@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+# Official OpenAI Ruby SDK (github.com/openai/openai-ruby), 0.x.
+# Pin the version: the official SDK requires Ruby >= 3.2 (and this example needs 3.3+
+# for uuid_v7). Pinning avoids Bundler silently resolving an incompatible release on
+# older Ruby. Adjust the constraint to the version you've tested in production.
+gem "openai", "~> 0.6"
+
+# Loads .env into ENV for this example. Not required by three.rb itself.
+gem "dotenv"
+
+# three.rb uses base64, which stops being a default gem in Ruby 3.4 — declare it
+# explicitly so the example keeps working (and warning-free) on Ruby 3.4+.
+gem "base64"

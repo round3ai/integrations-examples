@@ -1,0 +1,23 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    base64 (0.3.0)
+    cgi (0.5.1)
+    connection_pool (3.0.2)
+    dotenv (3.2.0)
+    openai (0.67.0)
+      base64
+      cgi
+      connection_pool
+
+PLATFORMS
+  arm64-darwin-25
+  ruby
+
+DEPENDENCIES
+  base64
+  dotenv
+  openai (~> 0.6)
+
+BUNDLED WITH
+   2.5.22

@@ -1,0 +1,24 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    anthropic (1.48.2)
+      cgi
+      connection_pool
+      standardwebhooks
+    base64 (0.3.0)
+    cgi (0.5.1)
+    connection_pool (3.0.2)
+    dotenv (3.2.0)
+    standardwebhooks (1.1.0)
+
+PLATFORMS
+  arm64-darwin-25
+  ruby
+
+DEPENDENCIES
+  anthropic (~> 1.0)
+  base64
+  dotenv
+
+BUNDLED WITH
+   2.5.22

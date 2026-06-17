@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+# Official Anthropic Ruby SDK (github.com/anthropics/anthropic-sdk-ruby), 1.x.
+# The version pin matters: unpinned on Ruby < 3.2, Bundler silently falls back to the
+# unrelated legacy community gem of the same name (0.4.x). This example needs the 1.x
+# official SDK, which requires Ruby >= 3.2 (and this example needs 3.3+ for uuid_v7).
+gem "anthropic", "~> 1.0"
+
+# Loads .env into ENV for this example. Not required by three.rb itself.
+gem "dotenv"
+
+# three.rb uses base64, which stops being a default gem in Ruby 3.4 — declare it
+# explicitly so the example keeps working (and warning-free) on Ruby 3.4+.
+gem "base64"
