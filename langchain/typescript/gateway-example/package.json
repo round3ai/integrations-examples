@@ -1,0 +1,28 @@
+{
+  "name": "three-langchain-gateway-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Record LangChain.js and LangGraph calls in Three.dev through the three.dev gateway (TypeScript)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@langchain/anthropic": "1.5.12",
+    "@langchain/core": "1.2.17",
+    "@langchain/google-genai": "2.3.2",
+    "@langchain/langgraph": "1.5.0",
+    "@langchain/openai": "1.6.2",
+    "langchain": "1.5.16",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}

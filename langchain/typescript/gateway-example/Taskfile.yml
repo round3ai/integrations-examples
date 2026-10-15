@@ -1,0 +1,39 @@
+version: '3'
+
+dotenv: ['.env']
+
+tasks:
+  install:
+    desc: Install Node dependencies (Node.js 22+)
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    cmds:
+      - npm install
+
+  env:
+    desc: Copy .env.example to .env if .env doesn't exist
+    status:
+      - test -f .env
+    cmds:
+      - cp .env.example .env
+      - echo "Created .env from .env.example — edit it and set THREE_API_KEY, USE_CASE_SLUG and at least one provider key"
+
+  typecheck:
+    desc: Type-check the example
+    deps: [install]
+    cmds:
+      - npm run typecheck
+
+  run:
+    desc: Run one conversation per configured provider through the three.dev gateway
+    deps: [install, env]
+    cmds:
+      - npm start
+
+  default:
+    desc: Install everything and run
+    cmds:
+      - task: run
