@@ -190,6 +190,59 @@ await generateText({ model: openai("gpt-5.4-mini"), prompt, headers: { "x-three-
 
 ---
 
+### LangChain + LangGraph (Python) — Gateway
+
+**[`langchain/python/gateway-example`](./langchain/python/gateway-example)**
+
+Records every call of an app built on [LangChain](https://python.langchain.com) and [LangGraph](https://langchain-ai.github.io/langgraph/) by sending it through the Three.dev gateway. The app keeps its own provider keys and its LangChain code: each chat model (`ChatOpenAI`, `ChatAnthropic`, `ChatGoogleGenerativeAI`, OpenRouter and Azure v1 via `ChatOpenAI`, `AzureChatOpenAI`) points its base URL at the gateway and carries the `x-three-*` headers. The session id is passed per call in `extra_headers`, and per agent run by a `wrap_model_call` middleware. A small weather assistant runs `invoke`, `stream` and a `create_agent` tool loop for each provider.
+
+| | |
+|---|---|
+| **Language** | Python 3.10+ |
+| **LLM Provider** | OpenAI · Anthropic · Gemini · OpenRouter · Azure OpenAI |
+| **Integration style** | Gateway proxy (chat model base URL + headers, session middleware) |
+| **What you need** | Three.dev API key · API key for at least one provider |
+
+```python
+openai = ChatOpenAI(
+    api_key=os.environ["OPENAI_API_KEY"],      # your own provider key
+    model="gpt-5.4-mini",
+    base_url="https://gate.three.dev/v1",
+    stream_usage=True,
+    default_headers={"x-three-api-key": three_api_key, "x-three-use-case": use_case_slug, "x-three-ai-provider": "openai"},
+)
+
+openai.invoke(messages, extra_headers={"x-three-session-id": session_id})
+```
+
+---
+
+### LangChain.js + LangGraph (TypeScript) — Gateway
+
+**[`langchain/typescript/gateway-example`](./langchain/typescript/gateway-example)**
+
+The same weather assistant on [LangChain.js](https://js.langchain.com): each chat model (`ChatOpenAI`, `ChatAnthropic`, `ChatGoogleGenerativeAI`, OpenRouter and Azure v1 via `ChatOpenAI`, `AzureChatOpenAI`) points at the gateway and carries the `x-three-*` headers, and a `createMiddleware` `wrapModelCall` sets the session id on every model call of an agent run. Covers where each class takes per-call headers (`ChatAnthropic`: `headers`; `ChatOpenAI`: `options.headers`).
+
+| | |
+|---|---|
+| **Language** | TypeScript (Node.js 22+) |
+| **LLM Provider** | OpenAI · Anthropic · Gemini · OpenRouter · Azure OpenAI |
+| **Integration style** | Gateway proxy (chat model base URL + headers, session middleware) |
+| **What you need** | Three.dev API key · API key for at least one provider |
+
+```ts
+const anthropic = new ChatAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,      // your own provider key
+  model: "claude-haiku-5-5",
+  anthropicApiUrl: "https://gate.three.dev",
+  clientOptions: { defaultHeaders: { "x-three-api-key": threeApiKey, "x-three-use-case": useCaseSlug, "x-three-ai-provider": "anthropic" } },
+});
+
+await anthropic.invoke(messages, { headers: { "x-three-session-id": sessionId } });
+```
+
+---
+
 ## Getting started
 
 Every example has its own README with step-by-step instructions. The general flow is:
@@ -213,6 +266,11 @@ integrations-examples/
 │   │   └── manual-reporting-example/   # Anthropic Ruby SDK + manual reporting (no proxy)
 │   └── ruby-on-rails/
 │       └── manual-reporting-example/   # Anthropic Ruby SDK on Rails + manual reporting (ActiveJob)
+├── langchain/
+│   ├── python/
+│   │   └── gateway-example/            # LangChain + LangGraph (Python) + Three.dev gateway (5 providers)
+│   └── typescript/
+│       └── gateway-example/            # LangChain.js + LangGraph + Three.dev gateway (5 providers)
 ├── openai-sdk/
 │   ├── ruby/
 │   │   └── manual-reporting-example/   # OpenAI Ruby SDK + manual reporting (no proxy)

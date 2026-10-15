@@ -1,0 +1,34 @@
+[project]
+name = "three-langchain-gateway-example"
+version = "1.0.0"
+description = "Record LangChain and LangGraph calls in Three.dev through the three.dev gateway (Python)"
+requires-python = ">=3.10"
+dependencies = [
+    "langchain==1.4.5",
+    "langchain-anthropic==1.7.6",
+    "langchain-core==1.6.10",
+    "langchain-google-genai==4.4.2",
+    "langchain-openai==1.7.1",
+    "langgraph==1.2.15",
+    "python-dotenv==1.2.4",
+]
+
+[dependency-groups]
+dev = ["mypy==2.4.0"]
+
+[tool.uv]
+package = false
+# The provider SDKs at the versions this example was verified with.
+constraint-dependencies = [
+    "anthropic==1.13.0",
+    "google-genai==2.30.1",
+    "langgraph-prebuilt==1.1.0",
+    "openai==3.31.0",
+]
+
+[tool.mypy]
+strict = true
+files = ["src"]
+# LangChain's chat models are pydantic models: the plugin accepts both a field's name and
+# its alias (e.g. ChatAnthropic's model / model_name).
+plugins = ["pydantic.mypy"]
