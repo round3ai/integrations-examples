@@ -130,14 +130,24 @@ func NewMiddleware(cfg Config) option.Middleware {
 
 // drainBody reads all bytes from rc, closes it, and returns the bytes along
 // with a fresh ReadCloser so the body can be read again by the next handler.
+// The replacement also replays any read error after the captured bytes.
 func drainBody(rc io.ReadCloser) ([]byte, io.ReadCloser) {
 	if rc == nil || rc == http.NoBody {
 		return nil, rc
 	}
-	b, _ := io.ReadAll(rc)
+	b, err := io.ReadAll(rc)
 	rc.Close()
-	return b, io.NopCloser(bytes.NewReader(b))
+	var replay io.Reader = bytes.NewReader(b)
+	if err != nil {
+		replay = io.MultiReader(replay, bodyReadError{err})
+	}
+	return b, io.NopCloser(replay)
 }
+
+// bodyReadError preserves the terminal error of a captured HTTP body.
+type bodyReadError struct{ err error }
+
+func (r bodyReadError) Read([]byte) (int, error) { return 0, r.err }
 
 // captured holds all data extracted from a single request/response cycle.
 type captured struct {
@@ -233,4 +243,3 @@ func buildPayload(cfg Config, c captured) []byte {
 	b, _ := json.Marshal(payload)
 	return b
 }
-
